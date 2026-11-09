@@ -6,7 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE } from '../site.config.mjs';
 import { FAQ, KEYS } from '../src/content.mjs';
-import { PRESETS, bgCss } from '../src/looks.js';
+import { PRESETS } from '../src/looks.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -34,6 +34,16 @@ const engineName = `assets/engine-${hash(engineCode)}.js`;
 await writeFile(join(dist, engineName), engineCode);
 const chunkFiles = [engineName];
 
+// 4. CSS: minify, add the preset swatch colors, inline, and hash for the CSP
+const rawCss = await readFile(join(root, 'src/styles.css'), 'utf8');
+const cssTarget = ['chrome90', 'safari15', 'firefox100'];
+const css = (await transform(rawCss, { loader: 'css', minify: true, target: cssTarget })).code.trim();
+const cssHash = createHash('sha256').update(css).digest('base64');
+// below-the-fold and JS-only styles ship as a hashed file so the document fits one round trip
+const restCss = (await transform(await readFile(join(root, 'src/rest.css'), 'utf8'), { loader: 'css', minify: true, target: cssTarget })).code;
+const restName = `assets/rest-${hash(restCss)}.css`;
+await writeFile(join(dist, restName), restCss);
+
 // 3. main module: one file, no static imports, nothing between first paint and a live stage
 const m = await build({
   entryPoints: [join(root, 'src/main.js')],
@@ -43,19 +53,11 @@ const m = await build({
   target,
   write: false,
   legalComments: 'none',
-  define: { __WORKER_URL__: JSON.stringify('/' + workerName), __ENGINE_URL__: JSON.stringify('/' + engineName), __ORIGIN__: JSON.stringify(O) },
+  define: { __WORKER_URL__: JSON.stringify('/' + workerName), __ENGINE_URL__: JSON.stringify('/' + engineName), __REST_CSS__: JSON.stringify('/' + restName), __ORIGIN__: JSON.stringify(O) },
 });
 const appCode = m.outputFiles[0].contents;
 const appFile = `assets/app-${hash(appCode)}.js`;
 await writeFile(join(dist, appFile), appCode);
-
-// 4. CSS: minify, add the preset swatch colors, inline, and hash for the CSP
-const swatchCss = PRESETS.filter((p) => p.s !== 'n')
-  .map((p) => `#bg-${p.id}+label .sw{background:${bgCss(p)}}`)
-  .join('');
-const rawCss = (await readFile(join(root, 'src/styles.css'), 'utf8')) + swatchCss;
-const css = (await transform(rawCss, { loader: 'css', minify: true, target: ['chrome90', 'safari15', 'firefox100'] })).code.trim();
-const cssHash = createHash('sha256').update(css).digest('base64');
 
 // 5. static files
 const pub = join(root, 'public');
@@ -141,7 +143,6 @@ const graph = {
       softwareVersion: '1.0',
       datePublished: '2026-11-09',
       inLanguage: 'en',
-      keywords: 'screenshot beautifier, screenshot editor, mockup generator, social media image, open graph image, 3D tilt, redact screenshot, free, no signup',
       creator: { '@id': M.personId },
       author: { '@id': M.personId },
       publisher: { '@id': M.orgId },
@@ -155,18 +156,6 @@ const graph = {
       height: 630,
       caption: OG_ALT,
       creator: { '@id': M.personId },
-    },
-    {
-      '@type': 'HowTo',
-      '@id': `${O}/#howto`,
-      name: 'How to make a screenshot post-ready with Shotglass',
-      totalTime: 'PT15S',
-      tool: { '@type': 'HowToTool', name: 'Shotglass' },
-      step: [
-        { '@type': 'HowToStep', position: 1, name: 'Paste', text: 'Press Command V or Ctrl V on the page, drop an image on the stage, or tap to choose one. It lands on a backdrop cut from its own colors.' },
-        { '@type': 'HowToStep', position: 2, name: 'Handle it', text: 'Drag the screenshot to tilt it in 3D, press the backdrop to move the light, and pick a canvas size, frame and backdrop.' },
-        { '@type': 'HowToStep', position: 3, name: 'Post it', text: 'Copy the PNG to the clipboard, save it at 1×, 2× or 3×, share it from your phone, or copy a look link or CSS.' },
-      ],
     },
     {
       '@type': 'FAQPage',
@@ -207,6 +196,7 @@ const vars = {
   OG_ALT: esc(OG_ALT),
   APP: appFile,
   CSS: css,
+  REST: restName,
   JSONLD,
   KEYS_DL,
   FAQ_HTML,
@@ -222,7 +212,7 @@ html = html.replace(/\n\s*/g, '\n').replace(/>\n</g, '><').replace(/\n/g, ' ');
 await writeFile(join(dist, 'index.html'), html);
 
 // 8. 404
-const notFound = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not here | Shotglass</title><meta name="robots" content="noindex"><link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${css}</style></head><body><main class="band" id="main"><p class="eyebrow">404</p><h2>Nothing on this shelf.</h2><p class="lede">The page you asked for isn’t here. Shotglass lives on one page.</p><a class="btn primary" href="/">Open Shotglass</a></main></body></html>`;
+const notFound = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not here | Shotglass</title><meta name="robots" content="noindex"><link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${css}</style><link rel="stylesheet" href="/${restName}"></head><body><main class="band" id="main"><p class="eyebrow">404</p><h2>Nothing on this shelf.</h2><p class="lede">The page you asked for isn’t here. Shotglass lives on one page.</p><a class="btn primary" href="/">Open Shotglass</a></main></body></html>`;
 await writeFile(join(dist, '404.html'), notFound);
 const notFoundHash = createHash('sha256').update(css).digest('base64');
 
@@ -249,7 +239,7 @@ const manifest = {
 await writeFile(join(dist, 'manifest.webmanifest'), JSON.stringify(manifest, null, 2));
 
 // 10. service worker: offline shell + share target
-const core = ['/', '/' + appFile, ...chunkFiles.map((f) => '/' + f), '/' + workerName, '/icon.svg', '/favicon.ico', '/manifest.webmanifest'];
+const core = ['/', '/' + appFile, '/' + restName, ...chunkFiles.map((f) => '/' + f), '/' + workerName, '/icon.svg', '/favicon.ico', '/manifest.webmanifest'];
 const version = hash(core.join('|') + css + html.length);
 const sw = `const V='sg-${version}';const CORE=${JSON.stringify(core)};
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
@@ -279,7 +269,7 @@ const csp = [
   'trusted-types shotglass',
   'upgrade-insecure-requests',
 ].join('; ');
-const perms = 'accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), xr-spatial-tracking=(), clipboard-read=(self), clipboard-write=(self), fullscreen=(self)';
+const perms = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=(), clipboard-read=(self), clipboard-write=(self)';
 const headers = `/*
   Content-Security-Policy: ${csp}
   Strict-Transport-Security: max-age=63072000; includeSubDomains
@@ -291,8 +281,6 @@ const headers = `/*
   Cross-Origin-Embedder-Policy: require-corp
   Cross-Origin-Resource-Policy: same-origin
   Origin-Agent-Cluster: ?1
-  X-DNS-Prefetch-Control: off
-  X-Permitted-Cross-Domain-Policies: none
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

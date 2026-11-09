@@ -9,7 +9,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 const BASE = process.env.BASE || 'http://localhost:4173';
 const out = process.argv[2] || 'check-out';
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch(BASE.startsWith('https') && process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {});
 const problems = [];
 const log = (...a) => console.log('·', ...a);
 

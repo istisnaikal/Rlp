@@ -3,7 +3,7 @@
 import { RATIOS, MAX_TILT, clamp, cardSize, frameDims, exportDims, cardLayout, pointInQuad, quadToUv, chromeHeight } from './layout.js';
 import { PRESETS, DEFAULT_LOOK, autoBackgrounds, bgParams, bgCss, encodeLook, decodeLook, findRecipe, lookToCss } from './looks.js';
 
-/* global __WORKER_URL__, __ENGINE_URL__, __ORIGIN__ */
+/* global __WORKER_URL__, __ENGINE_URL__, __REST_CSS__, __ORIGIN__ */
 const ORIGIN = typeof __ORIGIN__ !== 'undefined' ? __ORIGIN__ : location.origin;
 const WORKER_URL = typeof __WORKER_URL__ !== 'undefined' ? __WORKER_URL__ : null;
 const ENGINE_URL = typeof __ENGINE_URL__ !== 'undefined' ? __ENGINE_URL__ : './engine.js';
@@ -608,6 +608,13 @@ function undoErase() {
 
 function swatchButtons() {
   return $$('input[name="bg"]').filter((r) => !r.closest('[hidden]'));
+}
+
+function paintPresetSwatches() {
+  for (const p of PRESETS) {
+    const el = $(`#bg-${p.id}`);
+    if (el && p.s !== 'n') el.nextElementSibling.querySelector('.sw').style.background = bgCss(p);
+  }
 }
 
 function paintAutoSwatches() {
@@ -1246,6 +1253,8 @@ function cycleRadio(name) {
 const keysDlg = $('#keys');
 function openKeys() {
   if (keysDlg.open) return;
+  const body = $('#keys-body');
+  if (!body.firstChild) body.append($('#shortcuts .keys').cloneNode(true));
   keysDlg.showModal();
 }
 $('#btn-keys').addEventListener('click', openKeys);
@@ -1430,7 +1439,14 @@ function registerAgentTools() {
 /* ---------------------------------------------------------------- boot */
 
 function boot() {
+  if (typeof __REST_CSS__ !== 'undefined') {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = __REST_CSS__;
+    document.head.append(l);
+  }
   for (const b of $$('[data-mod]')) b.title = b.dataset.mod.replace('MOD', isMac ? '⌘' : 'Ctrl+');
+  paintPresetSwatches();
   setBackdrop(currentSpec, false);
   syncControls();
   renderSaved();
