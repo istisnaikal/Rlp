@@ -1,0 +1,36 @@
+# Shotglass
+
+> Shotglass is a free screenshot beautifier that runs entirely in the browser. Paste a screenshot, tilt it in real 3D, move the light, erase secrets, and export a post-ready PNG. No sign-up, no watermark, no uploads, no tracking. Built by [Eyüp DevArt](https://eyupdevart.com/).
+
+Shotglass lives at [{{ORIGIN}}/]({{ORIGIN}}/). Everything happens on the user's device: decoding, rendering (WebGL in a Web Worker), erasing and PNG encoding. There is no server that receives images, no analytics, no cookies and no third-party requests. The only stored data is a list of looks the user explicitly stars, kept in localStorage until the user forgets them.
+
+## The app
+
+- [Shotglass]({{ORIGIN}}/): Paste (Cmd/Ctrl+V), drop or choose a screenshot. It lands on a backdrop generated from its own colors. Drag it to tilt in 3D with momentum and friction; press the backdrop to move the light, and the cast shadow and glass glare follow.
+- [How it works]({{ORIGIN}}/#how): Paste, handle it, post it, in about fifteen seconds.
+- [Every result travels]({{ORIGIN}}/#travel): PNG at 1×, 2× or 3× to the clipboard or a file; the phone share sheet; drag-out; look links; CSS for a real image element.
+- [Privacy]({{ORIGIN}}/#private): Nothing is uploaded. Erase replaces pixels under API keys, emails and names with their surroundings, which, unlike blur, cannot be reversed.
+- [Keyboard shortcuts]({{ORIGIN}}/#shortcuts): B backdrop, R canvas size, F frame, E erase, G grain, 0 flatten, L copy look link, Cmd/Ctrl+C copy image, Cmd/Ctrl+S save.
+- [FAQ]({{ORIGIN}}/#faq): Pricing (free), uploads (none), sizes, sharing looks, mobile use, offline use.
+
+## Canvas sizes
+
+Auto (fits the shot), 16:9 (X, YouTube, slides), 1200×630 Open Graph link cards and LinkedIn, 1:1, 4:5, 9:16 stories, 4:3. Frames: none, window, browser with an editable address.
+
+## Look links
+
+A look is the full style (backdrop, canvas size, frame, size, corners, shadow, glare, grain, tilt and light) encoded in the URL fragment, for example [a 16:9 browser-frame look]({{ORIGIN}}/#look=v1.r169.fb.s74.c45.d62.g50.n0.t9_-15.l22_14). The screenshot is never part of a link. Opening a look link applies the style; the visitor then pastes their own screenshot.
+
+## For agents
+
+The page registers WebMCP tools when the browser supports navigator.modelContext: shotglass_apply_look, shotglass_get_look, shotglass_erase_region and shotglass_export_image.
+
+## Maker
+
+- [Eyüp DevArt](https://eyupdevart.com/): web developer and digital artist who designed and built Shotglass.
+- [WHIRLWIND • T](https://whirlwind-t.dev/): another project from the same workbench.
+
+## Optional
+
+- [Sitemap]({{ORIGIN}}/sitemap.xml)
+- [Web app manifest]({{ORIGIN}}/manifest.webmanifest)
